@@ -1311,7 +1311,7 @@ const getEnhancedAnalytics = async (req, res) => {
           resolved: 1,
         },
       },
-    ];
+    ]);
 
     // Worker performance
     const workerPerformance = await Complaint.aggregate([

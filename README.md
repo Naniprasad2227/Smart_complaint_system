@@ -102,6 +102,25 @@ npm start
 
 Frontend runs on http://localhost:3000.
 
+## Deploy Frontend On Vercel
+
+This frontend uses React Router with client-side routes such as `/login` and `/dashboard`.
+When deploying to Vercel, the project must be configured as a single-page app so direct route visits do not return 404.
+
+Required Vercel settings:
+
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Output Directory: `build`
+
+The repository includes [frontend/vercel.json](frontend/vercel.json) with a rewrite rule that sends all routes to `index.html`.
+
+Frontend environment variable for deployed builds:
+
+```env
+REACT_APP_API_URL=https://your-backend-domain/api
+```
+
 ## API Overview
 
 Auth:
