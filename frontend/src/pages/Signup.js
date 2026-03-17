@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authApi } from '../services/api';
-import { getCurrentLocationFields } from '../services/location';
+import { signupWithEmailPassword } from '../services/localAuth';
 
 const Signup = ({ onAuthSuccess }) => {
   const navigate = useNavigate();
@@ -9,19 +8,9 @@ const Signup = ({ onAuthSuccess }) => {
     name: '',
     email: '',
     password: '',
-    phone: '',
-    role: 'user',
-    adminLevel: 'village',
-    specialty: '',
-    country: '',
-    state: '',
-    district: '',
-    mandal: '',
-    village: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [locationLoading, setLocationLoading] = useState(false);
 
   const handleChange = (event) => {
     setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
@@ -33,36 +22,13 @@ const Signup = ({ onAuthSuccess }) => {
     setError('');
 
     try {
-      const normalizedMobile = String(form.phone || '').replace(/\D/g, '');
-      if (!/^\d{10}$/.test(normalizedMobile)) {
-        setError('Mobile number must be exactly 10 digits');
-        setLoading(false);
-        return;
-      }
-
-      const { data } = await authApi.signup(form);
-      onAuthSuccess(data);
+      const payload = signupWithEmailPassword(form);
+      onAuthSuccess(payload);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Signup failed');
+      setError(err.message || 'Signup failed');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleUseCurrentLocation = async () => {
-    setLocationLoading(true);
-    setError('');
-    try {
-      const locationData = await getCurrentLocationFields();
-      setForm((prev) => ({
-        ...prev,
-        ...locationData,
-      }));
-    } catch (err) {
-      setError(err.message || 'Failed to detect current location');
-    } finally {
-      setLocationLoading(false);
     }
   };
 
@@ -85,7 +51,7 @@ const Signup = ({ onAuthSuccess }) => {
         <input
           type="email"
           name="email"
-          placeholder="Email"
+          placeholder="Gmail"
           value={form.email}
           onChange={handleChange}
           className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
@@ -100,117 +66,9 @@ const Signup = ({ onAuthSuccess }) => {
           className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
           required
         />
-        <input
-          type="tel"
-          name="phone"
-          placeholder="Mobile Number"
-          value={form.phone}
-          onChange={handleChange}
-          maxLength={10}
-          className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-          required
-        />
-        <select
-          name="role"
-          value={form.role}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-        >
-          <option value="user">Citizen / User</option>
-          <option value="worker">Field Worker</option>
-          <option value="admin">Admin</option>
-        </select>
-        {form.role === 'admin' ? (
-          <select
-            name="adminLevel"
-            value={form.adminLevel}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            required
-          >
-            <option value="village">Village Admin (Local Leader)</option>
-            <option value="mandal">Mandal Admin (Regional Coordinator)</option>
-            <option value="district">District Admin (Collector)</option>
-            <option value="state">State Admin (State Official)</option>
-            <option value="nation">Nation Admin (National Overseer)</option>
-          </select>
-        ) : null}
-        {form.role === 'worker' && (
-          <select
-            name="specialty"
-            value={form.specialty}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            required
-          >
-            <option value="">-- Select Your Specialty --</option>
-            <option value="Civil Engineer">Civil Engineer</option>
-            <option value="Electrician">Electrician</option>
-            <option value="Plumber">Plumber</option>
-            <option value="Road Contractor">Road Contractor</option>
-            <option value="Environmental Inspector">Environmental Inspector</option>
-            <option value="Sanitation Worker">Sanitation Worker</option>
-            <option value="Building Inspector">Building Inspector</option>
-            <option value="Water Engineer">Water Engineer</option>
-            <option value="IT Technician">IT Technician</option>
-            <option value="General Contractor">General Contractor</option>
-          </select>
-        )}
-        <button
-          type="button"
-          onClick={handleUseCurrentLocation}
-          disabled={locationLoading}
-          className="w-full rounded-lg border border-indigo-400 bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {locationLoading ? 'Detecting current location...' : 'Use Current Location'}
-        </button>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <input
-            type="text"
-            name="country"
-            placeholder="Country"
-            value={form.country}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            required
-          />
-          <input
-            type="text"
-            name="state"
-            placeholder="State"
-            value={form.state}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            required
-          />
-          <input
-            type="text"
-            name="district"
-            placeholder="District"
-            value={form.district}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            required
-          />
-          <input
-            type="text"
-            name="mandal"
-            placeholder="Mandal"
-            value={form.mandal}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            required
-          />
-        </div>
-        <input
-          type="text"
-          name="village"
-          placeholder="Village"
-          value={form.village}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-          required
-        />
+        <p className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+          Simple authentication mode: signup with Gmail and password.
+        </p>
         {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200">{error}</p>}
         <button
           type="submit"

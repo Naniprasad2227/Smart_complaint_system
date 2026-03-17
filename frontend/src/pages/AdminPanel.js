@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import ComplaintCard from '../components/ComplaintCard';
 import NotificationPopup from '../components/NotificationPopup';
-import { authApi, complaintApi, notificationApi, workerApi } from '../services/api';
+import { complaintApi, notificationApi, workerApi } from '../services/api';
 
 const statusOptions = ['Submitted', 'Under Review', 'In Progress', 'Resolved', 'Closed'];
 
@@ -148,16 +148,10 @@ const AdminPanel = () => {
 
   const toggleRegisteredWorker = async (worker) => {
     try {
-      if (worker.isActive) {
-        if (!window.confirm('Deactivate this registered worker account?')) return;
-        await authApi.adminDeactivateUser(worker._id, { reason: 'Deactivated by admin from worker panel' });
-      } else {
-        if (!window.confirm('Reactivate this registered worker account? Admin confirmation is required.')) return;
-        await authApi.adminReactivateUser(worker._id, { confirm: true });
-      }
+      if (!window.confirm('Registered worker auth-account controls are disabled in simple auth mode. Continue with worker status management only?')) return;
       await loadWorkers();
-    } catch (err) {
-      setWorkerError(err.response?.data?.message || 'Failed to update worker account status');
+    } catch (_err) {
+      setWorkerError('Failed to refresh worker list');
     }
   };
 

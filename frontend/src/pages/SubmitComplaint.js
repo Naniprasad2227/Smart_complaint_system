@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { authApi, complaintApi } from '../services/api';
+import { complaintApi } from '../services/api';
 import { getCurrentLocationFields } from '../services/location';
 import WorkflowTimeline from '../components/WorkflowTimeline';
 import NotificationPopup from '../components/NotificationPopup';
@@ -15,11 +15,7 @@ const SubmitComplaint = () => {
   const [complaints, setComplaints] = useState([]);
   const [locationLoading, setLocationLoading] = useState(false);
   const [adminCheck, setAdminCheck] = useState(null);
-  const [mobileVerified, setMobileVerified] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [requestingOtp, setRequestingOtp] = useState(false);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [mobileVerified] = useState(true);
   const [latestSubmitted, setLatestSubmitted] = useState(null);
   const [notification, setNotification] = useState({ open: false, message: '', type: 'info' });
   const [location, setLocation] = useState({
@@ -50,27 +46,9 @@ const SubmitComplaint = () => {
       }
     };
 
-    const loadProfile = async () => {
-      try {
-        const { data } = await authApi.getProfile();
-        setMobileVerified(Boolean(data?.user?.mobileVerified));
-      } catch (_error) {
-        setMobileVerified(false);
-      }
-    };
-
     loadComplaints();
     loadAdminCheck();
-    loadProfile();
   }, []);
-
-  useEffect(() => {
-    if (otpCooldown <= 0) return undefined;
-    const timer = setInterval(() => {
-      setOtpCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [otpCooldown]);
 
   const statusCounts = useMemo(() => {
     return {
@@ -140,12 +118,6 @@ const SubmitComplaint = () => {
     setLoading(true);
 
     try {
-      if (!mobileVerified) {
-        showNotification('Please verify your mobile number with OTP before submitting a complaint.', 'error');
-        setLoading(false);
-        return;
-      }
-
       let submitResponse;
       const requiredLocationFields = ['country', 'state', 'district', 'mandal', 'village'];
       const missingLocation = requiredLocationFields.some((field) => !String(location[field] || '').trim());
@@ -199,47 +171,6 @@ const SubmitComplaint = () => {
     }
   };
 
-  const handleRequestOtp = async () => {
-    setRequestingOtp(true);
-    try {
-      const { data } = await authApi.requestMobileOtp();
-      setOtpCooldown(Number(data?.resendAvailableInSeconds || 30));
-      showNotification('OTP sent to your mobile number.', 'info');
-    } catch (err) {
-      const retryAfterSeconds = Number(err.response?.data?.retryAfterSeconds || 0);
-      if (retryAfterSeconds > 0) {
-        setOtpCooldown(retryAfterSeconds);
-      }
-      showNotification(err.response?.data?.message || 'Failed to request OTP', 'error');
-    } finally {
-      setRequestingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setVerifyingOtp(true);
-    try {
-      const { data } = await authApi.verifyMobileOtp(otpCode);
-      setMobileVerified(Boolean(data?.user?.mobileVerified));
-      setOtpCode('');
-      setOtpCooldown(0);
-      showNotification('Mobile number verified successfully.', 'success');
-    } catch (err) {
-      const attemptsRemaining = Number(err.response?.data?.attemptsRemaining);
-      const retryAfterSeconds = Number(err.response?.data?.retryAfterSeconds || 0);
-      if (retryAfterSeconds > 0) {
-        setOtpCooldown(retryAfterSeconds);
-      }
-      if (!Number.isNaN(attemptsRemaining) && attemptsRemaining >= 0) {
-        showNotification(`${err.response?.data?.message || 'Failed to verify OTP'} (${attemptsRemaining} attempts left)`, 'error');
-      } else {
-        showNotification(err.response?.data?.message || 'Failed to verify OTP', 'error');
-      }
-    } finally {
-      setVerifyingOtp(false);
-    }
-  };
-
 
   return (
     <div className="page-enter space-y-4">
@@ -281,29 +212,7 @@ const SubmitComplaint = () => {
                 {!mobileVerified ? (
                   <div className="mt-2 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleRequestOtp}
-                        disabled={requestingOtp || otpCooldown > 0}
-                        className="rounded border border-[#2d61b6] px-2.5 py-1 text-[11px] font-semibold text-[#2d61b6] hover:bg-blue-50 disabled:opacity-60"
-                      >
-                        {requestingOtp ? 'Sending OTP...' : otpCooldown > 0 ? `Resend OTP in ${otpCooldown}s` : 'Send OTP'}
-                      </button>
-                      <input
-                        type="text"
-                        value={otpCode}
-                        onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="Enter 6-digit OTP"
-                        className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs outline-none focus:border-[#2d61b6]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleVerifyOtp}
-                        disabled={verifyingOtp || otpCode.length !== 6}
-                        className="rounded bg-[#2d61b6] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#214f9c] disabled:opacity-60"
-                      >
-                        {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
-                      </button>
+                      <p className="text-xs text-slate-500">OTP is disabled in simple authentication mode.</p>
                     </div>
                   </div>
                 ) : null}

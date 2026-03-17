@@ -1,16 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { authApi } from '../services/api';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { resetLocalPassword } from '../services/localAuth';
 
 const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = useMemo(() => String(searchParams.get('token') || '').trim(), [searchParams]);
-  const emailFromLink = useMemo(() => String(searchParams.get('email') || '').trim(), [searchParams]);
-
-  const [email, setEmail] = useState(emailFromLink);
+  const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,11 +17,6 @@ const ResetPassword = () => {
     event.preventDefault();
     setError('');
     setSuccess('');
-
-    if (!token) {
-      setError('Reset token is missing. Please use the password reset link from your email.');
-      return;
-    }
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       setError('Please provide a valid email address.');
@@ -44,11 +35,11 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const { data } = await authApi.resetPassword({ email, token, newPassword });
+      const data = resetLocalPassword({ email, newPassword });
       setSuccess(data?.message || 'Password reset successful. Redirecting to login...');
       setTimeout(() => navigate('/login'), 1200);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to reset password');
+      setError(err.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }
@@ -60,6 +51,7 @@ const ResetPassword = () => {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Account Recovery</p>
           <h1 className="mt-1 text-3xl font-bold text-slate-900">Reset your password</h1>
+          <p className="mt-2 text-xs text-slate-500">Simple mode: reset password directly using your Gmail and new password.</p>
         </div>
 
         <input

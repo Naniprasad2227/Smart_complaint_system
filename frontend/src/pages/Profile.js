@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '../services/api';
+import { updateLocalUserProfile } from '../services/localAuth';
 import { getCurrentLocationFields } from '../services/location';
 
 const ProfileRow = ({ label, value }) => (
@@ -15,12 +15,7 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [requestingOtp, setRequestingOtp] = useState(false);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [otpCooldown, setOtpCooldown] = useState(0);
-  const [otpCode, setOtpCode] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
-  const [deactivating, setDeactivating] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({
@@ -37,14 +32,6 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
     if (!user?.createdAt) return 'N/A';
     return new Date(user.createdAt).toLocaleDateString();
   }, [user?.createdAt]);
-
-  useEffect(() => {
-    if (otpCooldown <= 0) return undefined;
-    const timer = setInterval(() => {
-      setOtpCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [otpCooldown]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -90,16 +77,12 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
         return;
       }
 
-      const { data } = await authApi.updateProfile(form);
-      onUserUpdate?.(data.user);
-      setSuccess(
-        data.user?.mobileVerified
-          ? 'Profile updated successfully.'
-          : 'Profile updated. Please verify your mobile number with OTP.'
-      );
+      const updatedUser = updateLocalUserProfile(form);
+      onUserUpdate?.(updatedUser);
+      setSuccess('Profile updated successfully.');
       setIsEditing(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update profile');
+      setError(err.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -120,74 +103,6 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
       setError(err.message || 'Failed to detect current location');
     } finally {
       setLocationLoading(false);
-    }
-  };
-
-  const handleRequestOtp = async () => {
-    setRequestingOtp(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const { data } = await authApi.requestMobileOtp();
-      setOtpCooldown(Number(data?.resendAvailableInSeconds || 30));
-      setSuccess('OTP sent successfully to your mobile number.');
-    } catch (err) {
-      const retryAfterSeconds = Number(err.response?.data?.retryAfterSeconds || 0);
-      if (retryAfterSeconds > 0) {
-        setOtpCooldown(retryAfterSeconds);
-      }
-      setError(err.response?.data?.message || 'Failed to request OTP');
-    } finally {
-      setRequestingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setVerifyingOtp(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const { data } = await authApi.verifyMobileOtp(otpCode);
-      onUserUpdate?.(data.user);
-      setOtpCode('');
-      setOtpCooldown(0);
-      setSuccess('Mobile number verified successfully.');
-    } catch (err) {
-      const attemptsRemaining = Number(err.response?.data?.attemptsRemaining);
-      const retryAfterSeconds = Number(err.response?.data?.retryAfterSeconds || 0);
-      if (retryAfterSeconds > 0) {
-        setOtpCooldown(retryAfterSeconds);
-      }
-      if (!Number.isNaN(attemptsRemaining) && attemptsRemaining >= 0) {
-        setError(`${err.response?.data?.message || 'Failed to verify OTP'} (${attemptsRemaining} attempts left)`);
-      } else {
-        setError(err.response?.data?.message || 'Failed to verify OTP');
-      }
-    } finally {
-      setVerifyingOtp(false);
-    }
-  };
-
-  const handleDeactivateAccount = async () => {
-    const reason = window.prompt('Optional: enter a reason for account deactivation (or leave blank).', '');
-    const confirmDeactivate = window.confirm(
-      'Deactivate this account? Your complaints and history will be retained, but you will not be able to log in until an admin reactivates it.'
-    );
-    if (!confirmDeactivate) return;
-
-    setDeactivating(true);
-    setError('');
-    setSuccess('');
-    try {
-      await authApi.deactivateAccount({ reason: String(reason || '').trim() });
-      await onLogout?.();
-      navigate('/login');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to deactivate account');
-    } finally {
-      setDeactivating(false);
     }
   };
 
@@ -334,42 +249,7 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
         ) : null}
 
         <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Mobile verification</p>
-              <p className="text-sm font-semibold text-slate-700">
-                Status: {user?.mobileVerified ? 'Verified' : 'Not verified'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleRequestOtp}
-              disabled={requestingOtp || otpCooldown > 0}
-              className="rounded border border-blue-300 bg-white px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
-            >
-              {requestingOtp ? 'Sending OTP...' : otpCooldown > 0 ? `Resend OTP in ${otpCooldown}s` : 'Send OTP'}
-            </button>
-          </div>
-
-          {!user?.mobileVerified ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Enter 6-digit OTP"
-                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
-              />
-              <button
-                type="button"
-                onClick={handleVerifyOtp}
-                disabled={verifyingOtp || otpCode.length !== 6}
-                className="rounded bg-[#214f9c] px-3 py-2 text-sm font-semibold text-white hover:bg-[#1a4388] disabled:opacity-60"
-              >
-                {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
-              </button>
-            </div>
-          ) : null}
+          <p className="text-sm text-slate-700">Simple authentication mode is active. Mobile OTP and deactivation are disabled.</p>
         </div>
 
         <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -389,14 +269,6 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
             className="rounded bg-[#214f9c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1a4388] disabled:opacity-60"
           >
             {loggingOut ? 'Logging out...' : 'Logout'}
-          </button>
-          <button
-            type="button"
-            onClick={handleDeactivateAccount}
-            disabled={deactivating}
-            className="rounded border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
-          >
-            {deactivating ? 'Deactivating...' : 'Deactivate Account'}
           </button>
         </div>
 

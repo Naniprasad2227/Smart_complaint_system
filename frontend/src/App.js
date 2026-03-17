@@ -20,7 +20,6 @@ import WorkerDashboard from './pages/WorkerDashboard';
 import WorkerPanel from './pages/WorkerPanel';
 import SentimentAnalysis from './pages/SentimentAnalysis';
 import ImageDetection from './pages/ImageDetection';
-import { authApi } from './services/api';
 import { disconnectNotificationSocket } from './services/socket';
 
 const getStoredUser = () => {
@@ -70,14 +69,6 @@ const App = () => {
   };
 
   const onLogout = async () => {
-    const storedRefreshToken = localStorage.getItem('refreshToken');
-    if (storedRefreshToken) {
-      try {
-        await authApi.logout({ refreshToken: storedRefreshToken });
-      } catch (error) {
-      }
-    }
-
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
