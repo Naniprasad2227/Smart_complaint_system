@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import ComplaintCard from '../components/ComplaintCard';
 import { complaintApi } from '../services/api';
 import WorkflowTimeline from '../components/WorkflowTimeline';
+import { readLocalComplaints } from '../services/localComplaints';
 
 const TrackComplaint = () => {
   const [complaints, setComplaints] = useState([]);
@@ -16,7 +17,8 @@ const TrackComplaint = () => {
         const { data } = await complaintApi.getMine();
         setComplaints(Array.isArray(data) ? data : []);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load complaint tracker');
+        setComplaints(readLocalComplaints());
+        setError('Backend tracker API unavailable. Showing local complaints.');
       } finally {
         setLoading(false);
       }

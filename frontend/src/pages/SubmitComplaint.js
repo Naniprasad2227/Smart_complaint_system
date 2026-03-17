@@ -3,6 +3,7 @@ import { complaintApi } from '../services/api';
 import { getCurrentLocationFields } from '../services/location';
 import WorkflowTimeline from '../components/WorkflowTimeline';
 import NotificationPopup from '../components/NotificationPopup';
+import { createLocalComplaint, prependLocalComplaint, readLocalComplaints } from '../services/localComplaints';
 
 const SubmitComplaint = () => {
   const [complaintTitle, setComplaintTitle] = useState('');
@@ -33,7 +34,7 @@ const SubmitComplaint = () => {
         const { data } = await complaintApi.getMine();
         setComplaints(data);
       } catch (_error) {
-        setComplaints([]);
+        setComplaints(readLocalComplaints());
       }
     };
 
@@ -165,7 +166,38 @@ const SubmitComplaint = () => {
         'success'
       );
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to submit complaint', 'error');
+      const localComplaint = createLocalComplaint({
+        complaintTitle,
+        complaintDescription,
+        category: detection?.category || 'General',
+        priority: detection?.priority || 'Medium',
+        department: detection?.department || 'General',
+        location: {
+          country: location.country.trim(),
+          state: location.state.trim(),
+          district: location.district.trim(),
+          mandal: location.mandal.trim(),
+          village: location.village.trim(),
+          fullAddress: location.fullAddress.trim(),
+        },
+      });
+      const nextItems = prependLocalComplaint(localComplaint);
+      setComplaints(nextItems);
+      setLatestSubmitted(localComplaint);
+      setComplaintTitle('');
+      setComplaintDescription('');
+      setImageFile(null);
+      setImagePreview('');
+      setDetection(null);
+      setLocation({
+        country: '',
+        state: '',
+        district: '',
+        mandal: '',
+        village: '',
+        fullAddress: '',
+      });
+      showNotification('Complaint saved locally (simple mode).', 'success');
     } finally {
       setLoading(false);
     }

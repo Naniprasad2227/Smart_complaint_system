@@ -3,6 +3,7 @@ import ComplaintCard from '../components/ComplaintCard';
 import { complaintApi } from '../services/api';
 import WorkflowTimeline from '../components/WorkflowTimeline';
 import NotificationPopup from '../components/NotificationPopup';
+import { readLocalComplaints } from '../services/localComplaints';
 
 const MyComplaints = () => {
   const [complaints, setComplaints] = useState([]);
@@ -18,7 +19,8 @@ const MyComplaints = () => {
         const { data } = await complaintApi.getMine();
         setComplaints(data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load complaints');
+        setComplaints(readLocalComplaints());
+        setError('Backend complaint API unavailable. Showing local complaints.');
       } finally {
         setLoading(false);
       }
@@ -57,10 +59,10 @@ const MyComplaints = () => {
       setComplaints(data);
       setNotification({ open: true, message: 'Image uploaded successfully.', type: 'success' });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to upload image');
+      setError(err.response?.data?.message || 'Image upload is unavailable in simple mode');
       setNotification({
         open: true,
-        message: err.response?.data?.message || 'Failed to upload image',
+        message: err.response?.data?.message || 'Image upload is unavailable in simple mode',
         type: 'error',
       });
     } finally {

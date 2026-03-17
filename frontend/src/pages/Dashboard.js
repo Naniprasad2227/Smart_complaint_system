@@ -14,6 +14,7 @@ import {
 import { Pie, Line, Bar } from 'react-chartjs-2';
 import { complaintApi } from '../services/api';
 import EnhancedAnalyticsPanel from '../components/EnhancedAnalyticsPanel';
+import { createLocalComplaint, prependLocalComplaint, readLocalComplaints } from '../services/localComplaints';
 
 ChartJS.register(
   ArcElement,
@@ -35,22 +36,6 @@ const initialForm = {
   category: 'General',
   priority: 'Medium',
   department: 'General',
-};
-
-const LOCAL_DASHBOARD_COMPLAINTS_KEY = 'localDashboardComplaints';
-
-const readLocalComplaints = () => {
-  try {
-    const raw = localStorage.getItem(LOCAL_DASHBOARD_COMPLAINTS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (_error) {
-    return [];
-  }
-};
-
-const writeLocalComplaints = (items) => {
-  localStorage.setItem(LOCAL_DASHBOARD_COMPLAINTS_KEY, JSON.stringify(items));
 };
 
 const getMonthKey = (dateValue) => {
@@ -267,20 +252,8 @@ const Dashboard = ({ user }) => {
       setForm(initialForm);
       await loadDashboard();
     } catch (err) {
-      const localComplaint = {
-        _id: `local-${Date.now()}`,
-        complaintTitle: form.complaintTitle,
-        complaintDescription: form.complaintDescription,
-        category: form.category,
-        priority: form.priority,
-        department: form.department,
-        status: 'Submitted',
-        sentiment: 'Neutral',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const nextItems = [localComplaint, ...readLocalComplaints()];
-      writeLocalComplaints(nextItems);
+      const localComplaint = createLocalComplaint(form);
+      const nextItems = prependLocalComplaint(localComplaint);
       setComplaints(nextItems);
       setSuccess('Complaint saved locally (simple mode).');
       setForm(initialForm);
