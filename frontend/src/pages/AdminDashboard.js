@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { complaintApi, workerApi } from '../services/api';
+import { adminApi, complaintApi, workerApi } from '../services/api';
 
 const MetricCard = ({ label, value, tone = 'text-slate-800' }) => (
   <div className="gov-card rounded-[24px] p-4">
@@ -14,6 +14,11 @@ const AdminDashboard = () => {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activityItems, setActivityItems] = useState([]);
+  const [securitySummary, setSecuritySummary] = useState({
+    last24Hours: { criticalCount: 0, warningCount: 0 },
+    topActions: [],
+  });
 
   useEffect(() => {
     const loadData = async () => {
@@ -21,6 +26,12 @@ const AdminDashboard = () => {
         const [complaintsRes, workersRes] = await Promise.all([complaintApi.getAll(), workerApi.getAll()]);
         setComplaints(Array.isArray(complaintsRes.data) ? complaintsRes.data : []);
         setWorkers(Array.isArray(workersRes.data) ? workersRes.data : []);
+        const [activitiesRes, summaryRes] = await Promise.all([
+          adminApi.getActivities(8),
+          adminApi.getSecuritySummary(),
+        ]);
+        setActivityItems(Array.isArray(activitiesRes.data) ? activitiesRes.data : []);
+        setSecuritySummary(summaryRes.data || { last24Hours: { criticalCount: 0, warningCount: 0 }, topActions: [] });
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load admin overview');
       } finally {
@@ -155,6 +166,67 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        <div className="gov-card rounded-[28px] p-5">
+          <p className="gov-kicker">Admin security summary (24h)</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-slate-800">Governance risk pulse</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-700">Critical events</p>
+              <p className="mt-2 text-3xl font-extrabold text-rose-800">{securitySummary?.last24Hours?.criticalCount || 0}</p>
+            </div>
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Warning events</p>
+              <p className="mt-2 text-3xl font-extrabold text-amber-800">{securitySummary?.last24Hours?.warningCount || 0}</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {(securitySummary?.topActions || []).length ? (
+              securitySummary.topActions.map((item) => (
+                <div key={item.action} className="gov-card-muted rounded-xl px-3 py-2 text-sm text-slate-700 flex justify-between">
+                  <span>{item.action}</span>
+                  <span className="font-bold">{item.count}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No security events in the last 24 hours.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="gov-card rounded-[28px] p-5">
+          <p className="gov-kicker">Recent admin activity</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-slate-800">Action timeline</h2>
+          <div className="mt-4 space-y-2 max-h-[320px] overflow-auto pr-1">
+            {activityItems.length ? (
+              activityItems.map((item) => (
+                <div key={item._id} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-800">{item.action}</p>
+                    <span
+                      className={`text-[10px] uppercase tracking-[0.12em] font-bold ${
+                        item.severity === 'critical'
+                          ? 'text-rose-700'
+                          : item.severity === 'warning'
+                          ? 'text-amber-700'
+                          : 'text-blue-700'
+                      }`}
+                    >
+                      {item.severity}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {item.adminUserId?.name || 'Admin'} • {new Date(item.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No admin activity found.</p>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );

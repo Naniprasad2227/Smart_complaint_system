@@ -1497,5 +1497,6 @@ module.exports = {
   getEnhancedAnalytics,
   getSentimentAnalysis,
   getResponseMetrics,
+  maybeEscalateToHigherLevelAdmin,
 };
 

@@ -23,6 +23,15 @@ const featureCards = [
   },
 ];
 
+const pageStructure = [
+  { name: 'Home Page', scope: 'Project intro, login/register, submit CTA' },
+  { name: 'User Dashboard', scope: 'Submit complaint, track status, history' },
+  { name: 'Submit Complaint', scope: 'Title, description, image, location' },
+  { name: 'Admin Dashboard', scope: 'Metrics, complaint queue, assignment' },
+  { name: 'Worker Dashboard', scope: 'Assigned tasks and progress updates' },
+  { name: 'Complaint Tracking', scope: 'Submitted -> Review -> Worker -> Resolved' },
+];
+
 const Home = () => {
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-10 relative z-10">
@@ -140,6 +149,41 @@ const Home = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="gov-card rounded-2xl p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Complete workflow diagram</p>
+          <h2 className="mt-2 text-2xl font-bold text-slate-900">Citizen -> AI -> Admin -> Worker -> Resolution</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            {['Complaint Submitted', 'AI Category + Priority', 'Admin Review', 'Worker Assignment', 'Resolved + User Update'].map(
+              (item, index) => (
+                <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Step {index + 1}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">{item}</p>
+                </div>
+              )
+            )}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">Example AI output</p>
+            <p className="mt-1 text-sm text-blue-900">
+              Complaint: "Big pothole on the road" -> Category: Road Department -> Priority: High
+            </p>
+          </div>
+        </section>
+
+        <section className="gov-card rounded-2xl p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Website pages structure</p>
+          <h2 className="mt-2 text-2xl font-bold text-slate-900">UI modules in the project</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {pageStructure.map((item) => (
+              <article key={item.name} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <h3 className="text-base font-bold text-slate-800">{item.name}</h3>
+                <p className="mt-1 text-sm text-slate-600">{item.scope}</p>
+              </article>
+            ))}
           </div>
         </section>
       </div>

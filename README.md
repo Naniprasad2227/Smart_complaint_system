@@ -2,6 +2,64 @@
 
 Full-stack MERN + AI complaint management platform with authentication, complaint workflow, AI categorization, status tracking, image upload hooks, and analytics.
 
+## Complete Workflow Diagram
+
+```text
+Citizen submits complaint
+	↓
+AI analyzes text and image
+	↓
+AI predicts category + priority
+	↓
+Admin reviews complaint
+	↓
+Admin assigns worker
+	↓
+Worker resolves issue
+	↓
+Status update sent to citizen
+```
+
+Example:
+
+```text
+Complaint: Big pothole on the road
+AI Result: Category -> Road Department, Priority -> High
+```
+
+## Website UI Design Structure
+
+1. Home Page
+- Intro section
+- Login/Register buttons
+- Submit Complaint CTA
+- Feature summary cards
+
+2. User Dashboard
+- Submit complaint button
+- My complaints list
+- Status overview
+
+3. Submit Complaint Page
+- Title
+- Description
+- Image upload
+- Location fields
+- Submit action
+
+4. Admin Dashboard
+- Total, pending, resolved, high-priority cards
+- Complaint list and filters
+- Worker assignment and status actions
+
+5. Worker Dashboard
+- Assigned task queue
+- Progress updates
+- Completion image upload
+
+6. Complaint Tracking Page
+- Submitted -> Under Review -> In Progress -> Resolved timeline
+
 ## Project Structure
 
 - frontend: React + Tailwind + Chart.js UI
@@ -19,6 +77,20 @@ Full-stack MERN + AI complaint management platform with authentication, complain
 - Complaint status tracking
 - Admin complaint management
 - Analytics dashboard with pie, bar, and line charts
+- Hierarchical governance flow: village -> mandal -> district -> state -> nation
+- Real-time notifications using Socket.io
+- Auto-escalation scheduler for overdue unresolved complaints
+- Admin security activity logs and summary APIs
+- Worker assignment workflow and progress updates
+
+## Advanced Features Included
+
+- AI categorization and priority prediction
+- Duplicate/recurrence tracking via complaint history
+- Real-time admin/citizen notification channel (Socket.io)
+- Hierarchical escalation pipeline
+- Admin security activity logs
+- Analytics for trends and response performance
 
 ## Option A: Run With Docker
 
@@ -56,6 +128,12 @@ npm install
 
 ```bash
 npm run dev
+```
+
+5. (Optional) Seed demo hierarchy and sample complaints:
+
+```bash
+npm run seed
 ```
 
 Backend runs on http://localhost:5000.
@@ -137,6 +215,19 @@ Complaints:
 - PATCH /api/complaints/:id/status (admin)
 - GET /api/complaints/analytics (admin)
 
+Admin:
+- GET /api/admin/activities
+- GET /api/admin/activities/security-summary
+- POST /api/admin/collector/question-lower-admins
+
+Notifications:
+- GET /api/notifications
+- PATCH /api/notifications/:id/read
+- PATCH /api/notifications/read-all
+
+Health:
+- GET /health
+
 ## Automated Tests
 
 Backend:
@@ -178,3 +269,5 @@ Complaint:
 - If AI service is unavailable, backend uses safe default classification.
 - Status flow: Submitted -> Under Review -> In Progress -> Resolved -> Closed
 - Recommended role for first test admin user: signup with role = admin
+- Backend scheduler checks overdue complaints and escalates them automatically (default every 15 minutes).
+- Docker compose includes health checks for MongoDB, AI model, backend, and frontend services.

@@ -3,6 +3,7 @@ const http = require('http');
 const connectDB = require('./config/db');
 const app = require('./app');
 const { createSocketServer } = require('./socket');
+const { startEscalationScheduler } = require('./jobs/escalationJob');
 
 dotenv.config();
 connectDB();
@@ -13,4 +14,5 @@ createSocketServer(httpServer);
 
 httpServer.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
+  startEscalationScheduler();
 });

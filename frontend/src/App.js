@@ -21,6 +21,7 @@ import WorkerPanel from './pages/WorkerPanel';
 import SentimentAnalysis from './pages/SentimentAnalysis';
 import ImageDetection from './pages/ImageDetection';
 import { disconnectNotificationSocket } from './services/socket';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const getStoredUser = () => {
   try {
@@ -85,6 +86,7 @@ const App = () => {
 
   return (
     <div>
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Home />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login onAuthSuccess={onAuthSuccess} />} />
@@ -249,6 +251,7 @@ const App = () => {
 
         <Route path="*" element={<Navigate to={isAuthenticated ? '/dashboard' : '/'} replace />} />
       </Routes>
+      </ErrorBoundary>
     </div>
   );
 };

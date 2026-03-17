@@ -1,4 +1,12 @@
-import { loginWithEmailPassword, resetLocalPassword, signupWithEmailPassword, updateLocalUserProfile } from './localAuth';
+import {
+  canAdminAccessByScope,
+  loginWithEmailPassword,
+  normalizeAdminLevel,
+  readLocalUsers,
+  resetLocalPassword,
+  signupWithEmailPassword,
+  updateLocalUserProfile,
+} from './localAuth';
 import { createLocalComplaint, prependLocalComplaint, readLocalComplaints, writeLocalComplaints } from './localComplaints';
 
 const WORKERS_STORAGE_KEY = 'localWorkers';
@@ -40,6 +48,122 @@ const getCurrentUser = () => {
   } catch (_error) {
     return null;
   }
+};
+
+const normalizeLocation = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+const buildReporterSnapshot = (user) => {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name || '',
+    email: user.email || '',
+    phone: user.phone || '',
+    role: user.role || 'user',
+    adminLevel: user.adminLevel || '',
+    adminTitle: user.adminTitle || '',
+    accountStatus: user.accountStatus || 'active',
+    village: user.village || '',
+    mandal: user.mandal || '',
+    district: user.district || '',
+    state: user.state || '',
+    country: user.country || '',
+  };
+};
+
+const buildAssignedAdminSnapshot = (admin) => {
+  if (!admin) {
+    return {
+      id: '',
+      name: 'Local Admin Desk',
+      email: '',
+      phone: '',
+      adminLevel: '',
+      adminTitle: '',
+      village: '',
+      mandal: '',
+      district: '',
+      state: '',
+      country: '',
+    };
+  }
+
+  return {
+    id: admin.id,
+    name: admin.name || 'Local Admin Desk',
+    email: admin.email || '',
+    phone: admin.phone || '',
+    adminLevel: admin.adminLevel || '',
+    adminTitle: admin.adminTitle || '',
+    village: admin.village || '',
+    mandal: admin.mandal || '',
+    district: admin.district || '',
+    state: admin.state || '',
+    country: admin.country || '',
+  };
+};
+
+const extractComplaintLocation = (complaint) => {
+  const nestedLocation = complaint?.location || complaint?.complaintLocation || {};
+  const village = nestedLocation.village || complaint?.village || complaint?.reporterSnapshot?.village || complaint?.userId?.village || '';
+  const mandal = nestedLocation.mandal || complaint?.mandal || complaint?.reporterSnapshot?.mandal || complaint?.userId?.mandal || '';
+  const district = nestedLocation.district || complaint?.district || complaint?.reporterSnapshot?.district || complaint?.userId?.district || '';
+  const state = nestedLocation.state || complaint?.state || complaint?.reporterSnapshot?.state || complaint?.userId?.state || '';
+  const country = nestedLocation.country || complaint?.country || complaint?.reporterSnapshot?.country || complaint?.userId?.country || '';
+  const fullAddress =
+    nestedLocation.fullAddress || [village, mandal, district, state, country].filter(Boolean).join(', ');
+
+  return {
+    village,
+    mandal,
+    district,
+    state,
+    country,
+    fullAddress,
+  };
+};
+
+const resolveAssignedAdmin = (location) => {
+  const matchingAdmins = readLocalUsers()
+    .filter((user) => user.role === 'admin' && user.accountStatus !== 'inactive')
+    .filter((user) => canAdminAccessByScope(user, location))
+    .sort((left, right) => {
+      const leftRank = ['village', 'mandal', 'district', 'state', 'nation'].indexOf(normalizeAdminLevel(left.adminLevel));
+      const rightRank = ['village', 'mandal', 'district', 'state', 'nation'].indexOf(normalizeAdminLevel(right.adminLevel));
+      return leftRank - rightRank;
+    });
+
+  return buildAssignedAdminSnapshot(matchingAdmins[0] || null);
+};
+
+const isComplaintOwnedByUser = (complaint, user) => {
+  const reporter = complaint?.userId || complaint?.reporterSnapshot;
+  if (!user || !reporter) return false;
+  if (reporter.id && user.id && reporter.id === user.id) return true;
+  return normalizeLocation(reporter.email) === normalizeLocation(user.email);
+};
+
+const filterComplaintsForCurrentUser = (complaints, currentUser = getCurrentUser()) => {
+  if (!currentUser) return complaints;
+
+  if (currentUser.role === 'admin') {
+    return complaints.filter((complaint) => {
+      const assignedAdminId = complaint?.assignedAdmin?.id;
+      if (assignedAdminId) {
+        return assignedAdminId === currentUser.id;
+      }
+      return canAdminAccessByScope(currentUser, extractComplaintLocation(complaint));
+    });
+  }
+
+  if (currentUser.role === 'worker') {
+    return complaints.filter(
+      (complaint) =>
+        complaint.assignedWorker?.workerId === currentUser.id || complaint.assignedWorker?.name === currentUser.name
+    );
+  }
+
+  return complaints.filter((complaint) => isComplaintOwnedByUser(complaint, currentUser));
 };
 
 const seedWorkers = () => {
@@ -132,15 +256,32 @@ const inferDepartment = (category) => {
 
 const enrichComplaint = (complaint) => {
   const user = getCurrentUser();
+  const complaintReporter = complaint.userId || complaint.reporterSnapshot || null;
+  const currentReporter = buildReporterSnapshot(user);
+  const mergedReporter = complaintReporter
+    ? {
+        ...complaintReporter,
+        ...(currentReporter && complaintReporter.email && currentReporter.email === complaintReporter.email ? currentReporter : {}),
+      }
+    : currentReporter;
+  const complaintLocation = extractComplaintLocation(complaint);
   return {
     ...complaint,
     complaintText: complaint.complaintDescription || complaint.complaintText || '',
-    complaintLocation: complaint.location || complaint.complaintLocation || null,
-    userId: complaint.userId || (user ? { name: user.name, email: user.email } : null),
+    complaintLocation,
+    village: complaintLocation.village,
+    mandal: complaintLocation.mandal,
+    district: complaintLocation.district,
+    state: complaintLocation.state,
+    country: complaintLocation.country,
+    userId: mergedReporter,
+    reporterSnapshot: complaint.reporterSnapshot || mergedReporter,
+    assignedAdmin: complaint.assignedAdmin || resolveAssignedAdmin(complaintLocation),
   };
 };
 
-const getComplaints = () => readLocalComplaints().map(enrichComplaint);
+const getAllComplaints = () => readLocalComplaints().map(enrichComplaint);
+const getVisibleComplaints = () => filterComplaintsForCurrentUser(getAllComplaints());
 
 const setComplaints = (items) => writeLocalComplaints(items);
 
@@ -265,7 +406,7 @@ const buildSentimentAnalysis = (complaints) => {
 };
 
 const updateComplaintRecord = (id, updater) => {
-  const complaints = getComplaints();
+  const complaints = getAllComplaints();
   const next = complaints.map((item) => {
     if (item._id !== id) return item;
     return {
@@ -286,7 +427,7 @@ const defaultReply = (message) => {
     return 'Open Submit Complaint and provide the issue title, description, and location details.';
   }
   if (normalized.includes('pending')) {
-    return `You currently have ${getComplaints().filter((item) => ['Submitted', 'Under Review', 'In Progress'].includes(item.status)).length} pending complaint(s).`;
+    return `You currently have ${getVisibleComplaints().filter((item) => ['Submitted', 'Under Review', 'In Progress'].includes(item.status)).length} pending complaint(s).`;
   }
   return 'Use Dashboard, Submit Complaint, My Complaints, and Track Complaint to manage your local complaint records.';
 };
@@ -318,6 +459,10 @@ export const complaintApi = {
     const category = payload?.category || inferCategory(text);
     const priority = payload?.priority || inferPriority(text);
     const department = payload?.department || inferDepartment(category);
+    const currentUser = getCurrentUser();
+    const reporterSnapshot = buildReporterSnapshot(currentUser);
+    const complaintLocation = extractComplaintLocation({ location: payload?.location, ...payload });
+    const assignedAdmin = resolveAssignedAdmin(complaintLocation);
     const complaint = enrichComplaint(
       createLocalComplaint({
         complaintTitle: payload?.complaintTitle,
@@ -325,22 +470,31 @@ export const complaintApi = {
         category,
         priority,
         department,
-        location: payload?.location,
+        location: complaintLocation,
       })
     );
-    complaint.userId = getCurrentUser() ? { name: getCurrentUser().name, email: getCurrentUser().email } : null;
+    complaint.userId = reporterSnapshot;
+    complaint.reporterSnapshot = reporterSnapshot;
     complaint.sentiment = priority === 'High' ? 'Negative' : 'Neutral';
-    complaint.assignedAdmin = { name: 'Local Admin Desk' };
+    complaint.assignedAdmin = assignedAdmin;
+    complaint.village = complaintLocation.village;
+    complaint.mandal = complaintLocation.mandal;
+    complaint.district = complaintLocation.district;
+    complaint.state = complaintLocation.state;
+    complaint.country = complaintLocation.country;
     prependLocalComplaint(complaint);
-    addNotification('Complaint submitted', `${complaint.complaintTitle || 'Complaint'} was submitted successfully.`);
+    addNotification(
+      'Complaint submitted',
+      `${complaint.complaintTitle || 'Complaint'} was submitted successfully and routed to ${assignedAdmin.name || 'Local Admin Desk'}.`
+    );
     return safeResolve(complaint);
   },
-  getMine: () => safeResolve(getComplaints()),
-  getAll: () => safeResolve(getComplaints()),
-  getById: (id) => safeResolve(getComplaints().find((item) => item._id === id) || null),
+  getMine: () => safeResolve(getAllComplaints().filter((item) => isComplaintOwnedByUser(item, getCurrentUser()))),
+  getAll: () => safeResolve(getVisibleComplaints()),
+  getById: (id) => safeResolve(getVisibleComplaints().find((item) => item._id === id) || null),
   update: (id, payload) => safeResolve(updateComplaintRecord(id, (item) => ({ ...item, ...payload }))),
   remove: (id) => {
-    const next = getComplaints().filter((item) => item._id !== id);
+    const next = getAllComplaints().filter((item) => item._id !== id);
     setComplaints(next);
     return safeResolve({ ok: true });
   },
@@ -354,13 +508,24 @@ export const complaintApi = {
     const complaint = updateComplaintRecord(id, (item) => ({ ...item, images: [...(item.images || []), imageRecord] }));
     return safeResolve({ complaint });
   },
-  getAnalytics: () => safeResolve(buildAnalytics(getComplaints())),
-  getEnhancedAnalytics: () => safeResolve(buildEnhancedAnalytics(getComplaints())),
-  getSentimentAnalysis: () => safeResolve(buildSentimentAnalysis(getComplaints())),
-  getResponseMetrics: () => safeResolve(buildResponseMetrics(getComplaints())),
+  getAnalytics: () => safeResolve(buildAnalytics(getVisibleComplaints())),
+  getEnhancedAnalytics: () => safeResolve(buildEnhancedAnalytics(getVisibleComplaints())),
+  getSentimentAnalysis: () => safeResolve(buildSentimentAnalysis(getVisibleComplaints())),
+  getResponseMetrics: () => safeResolve(buildResponseMetrics(getVisibleComplaints())),
   chat: (message) => safeResolve({ reply: defaultReply(message) }),
   adminCheck: () => safeResolve({ message: 'Simple local mode is active. Complaints are stored in this browser.' }),
   assignWorker: (complaintId, workerId) => {
+    const currentUser = getCurrentUser();
+    const targetComplaint = getAllComplaints().find((item) => item._id === complaintId);
+
+    if (!targetComplaint) {
+      return Promise.reject(new Error('Complaint not found'));
+    }
+
+    if (currentUser?.role === 'admin' && targetComplaint?.assignedAdmin?.id && targetComplaint.assignedAdmin.id !== currentUser.id) {
+      return Promise.reject(new Error('This complaint is assigned to a different admin'));
+    }
+
     const worker = readWorkers().find((item) => item._id === workerId) || null;
     const complaint = updateComplaintRecord(complaintId, (item) => ({
       ...item,
@@ -378,7 +543,7 @@ export const complaintApi = {
   },
   getMyAssignments: () => {
     const currentUser = getCurrentUser();
-    const assignments = getComplaints().filter((item) => {
+    const assignments = getAllComplaints().filter((item) => {
       if (!item.assignedWorker) return false;
       if (!currentUser) return true;
       return item.assignedWorker.workerId === currentUser.id || item.assignedWorker.name === currentUser.name;
@@ -413,6 +578,24 @@ export const adminApi = {
   assignWorker: (complaintId, workerId) => complaintApi.assignWorker(complaintId, workerId),
   updateStatus: (complaintId, status) => complaintApi.updateStatus(complaintId, status),
   collectorQuestionLowerAdmins: () => safeResolve({ ok: true }),
+  getActivities: (limit = 25) =>
+    safeResolve(
+      Array.from({ length: Math.min(25, Math.max(1, Number(limit) || 10)) }, (_, index) => ({
+        _id: `local-activity-${index}`,
+        action: ['complaint-status-updated', 'worker-assigned', 'complaint-escalated'][index % 3],
+        severity: index % 7 === 0 ? 'warning' : 'info',
+        createdAt: new Date(Date.now() - index * 30 * 60000).toISOString(),
+        adminUserId: { name: 'Local Admin', email: 'local.admin@example.com', adminLevel: 'village' },
+      }))
+    ),
+  getSecuritySummary: () =>
+    safeResolve({
+      last24Hours: { criticalCount: 0, warningCount: 2 },
+      topActions: [
+        { action: 'worker-assigned', count: 6, maxSeverity: 'info', severityScore: 1 },
+        { action: 'complaint-status-updated', count: 4, maxSeverity: 'warning', severityScore: 2 },
+      ],
+    }),
 };
 
 export const workerPortalApi = {
