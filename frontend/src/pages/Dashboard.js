@@ -37,6 +37,22 @@ const initialForm = {
   department: 'General',
 };
 
+const LOCAL_DASHBOARD_COMPLAINTS_KEY = 'localDashboardComplaints';
+
+const readLocalComplaints = () => {
+  try {
+    const raw = localStorage.getItem(LOCAL_DASHBOARD_COMPLAINTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_error) {
+    return [];
+  }
+};
+
+const writeLocalComplaints = (items) => {
+  localStorage.setItem(LOCAL_DASHBOARD_COMPLAINTS_KEY, JSON.stringify(items));
+};
+
 const getMonthKey = (dateValue) => {
   const date = new Date(dateValue);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -97,7 +113,10 @@ const Dashboard = ({ user }) => {
       setComplaints(Array.isArray(complaintsRes.data) ? complaintsRes.data : []);
       setAnalytics(analyticsRes?.data || null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load dashboard data');
+      const localItems = readLocalComplaints();
+      setComplaints(localItems);
+      setAnalytics(null);
+      setError('Backend dashboard API unavailable. Showing local dashboard data.');
     } finally {
       setLoading(false);
     }
@@ -248,7 +267,24 @@ const Dashboard = ({ user }) => {
       setForm(initialForm);
       await loadDashboard();
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to submit complaint');
+      const localComplaint = {
+        _id: `local-${Date.now()}`,
+        complaintTitle: form.complaintTitle,
+        complaintDescription: form.complaintDescription,
+        category: form.category,
+        priority: form.priority,
+        department: form.department,
+        status: 'Submitted',
+        sentiment: 'Neutral',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const nextItems = [localComplaint, ...readLocalComplaints()];
+      writeLocalComplaints(nextItems);
+      setComplaints(nextItems);
+      setSuccess('Complaint saved locally (simple mode).');
+      setForm(initialForm);
+      setError('');
     } finally {
       setSubmitting(false);
     }
