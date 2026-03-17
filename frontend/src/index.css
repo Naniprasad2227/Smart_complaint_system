@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700&display=swap');
+
+:root {
+  --brand-blue-900: #123b83;
+  --brand-blue-800: #1d4fa3;
+  --brand-blue-700: #2f63ba;
+  --brand-surface: #f5f7fb;
+  --brand-card: #ffffff;
+  --brand-navy: #0f274d;
+  --brand-gold: #d6b25e;
+  --brand-ink: #11253d;
+  --brand-border: #d5dfef;
+}
+
+body {
+  margin: 0;
+  font-family: 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 24%),
+    linear-gradient(155deg, #dde8fb 0%, #edf3ff 26%, #f3f7ff 57%, #e7eefb 100%);
+  color: #102a43;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(16, 42, 67, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 42, 67, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  left: -10%;
+  right: -10%;
+  bottom: -110px;
+  height: 240px;
+  background:
+    radial-gradient(70% 130% at 20% 20%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(55% 120% at 55% 15%, rgba(210, 224, 250, 0.95), rgba(210, 224, 250, 0) 65%),
+    radial-gradient(60% 125% at 90% 10%, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0) 62%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Sora', 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-surface {
+  background: var(--brand-card);
+  border: 1px solid #d9e1f0;
+  box-shadow: 0 12px 24px -18px rgba(14, 30, 74, 0.35);
+}
+
+.shell-frame {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(245, 248, 255, 0.92)),
+    var(--brand-card);
+  border: 1px solid #cfdcf2;
+  border-radius: 30px;
+  box-shadow: 0 32px 72px -36px rgba(15, 39, 77, 0.48);
+  backdrop-filter: blur(12px);
+}
+
+.blue-panel {
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.06), rgba(255,255,255,0) 38%),
+    linear-gradient(155deg, #143567 0%, #163d79 45%, #1f56ad 100%);
+  color: #eef5ff;
+}
+
+.gov-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--brand-border);
+  border-radius: 24px;
+  box-shadow: 0 20px 44px -32px rgba(17, 37, 61, 0.42);
+}
+
+.gov-card-muted {
+  background: linear-gradient(180deg, #f7faff 0%, #eef4ff 100%);
+  border: 1px solid #d9e3f3;
+  border-radius: 22px;
+}
+
+.gov-kicker {
+  color: var(--brand-blue-800);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.gov-input {
+  border: 1px solid #cad7ed;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.gov-input:focus {
+  outline: none;
+  border-color: #2f63ba;
+  box-shadow: 0 0 0 4px rgba(47, 99, 186, 0.12);
+}
+
+.gov-button-primary {
+  background: linear-gradient(135deg, #1e4fa2 0%, #2b67c0 100%);
+  color: #fff;
+  box-shadow: 0 16px 28px -18px rgba(30, 79, 162, 0.7);
+}
+
+.gov-button-secondary {
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--brand-navy);
+  border: 1px solid #cad7ed;
+}
+
+.gov-layout-preview {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0f274d 0%, #173a70 100%);
+  border-radius: 26px;
+  min-height: 280px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gov-layout-preview::before {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.gov-map-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.page-enter {
+  animation: page-enter 0.45s ease-out;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

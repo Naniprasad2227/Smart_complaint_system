@@ -1,0 +1,11 @@
+text,category,priority,department,sentiment
+Garbage is not being collected from our street for a week,Sanitation,Medium,Cleaning,Negative
+Water leakage near main road causing flooding,Water Supply,High,Water Department,Negative
+Street lights are not working in our area,Infrastructure,High,Public Works,Negative
+Internet lab computers are very slow in the college,IT Services,Medium,IT Support,Negative
+The playground is not cleaned properly,Sanitation,Low,Cleaning,Neutral
+Road has large potholes and accidents are happening,Infrastructure,High,Public Works,Negative
+Drinking water quality is poor in hostel,Water Supply,High,Water Department,Negative
+Library air conditioning is not functioning,Facilities,Medium,Maintenance,Neutral
+Classroom projector is broken since last month,IT Services,Medium,IT Support,Neutral
+Office staff resolved my previous issue quickly,General,Low,General Operations,Positive
