@@ -20,7 +20,7 @@ const MyComplaints = () => {
         setComplaints(data);
       } catch (err) {
         setComplaints(readLocalComplaints());
-        setError('Backend complaint API unavailable. Showing local complaints.');
+        setError('Unable to load saved complaints. Showing local records.');
       } finally {
         setLoading(false);
       }

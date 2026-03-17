@@ -18,7 +18,7 @@ const TrackComplaint = () => {
         setComplaints(Array.isArray(data) ? data : []);
       } catch (err) {
         setComplaints(readLocalComplaints());
-        setError('Backend tracker API unavailable. Showing local complaints.');
+        setError('Unable to load complaint tracker. Showing local records.');
       } finally {
         setLoading(false);
       }

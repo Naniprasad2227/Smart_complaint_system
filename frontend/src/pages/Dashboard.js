@@ -101,7 +101,7 @@ const Dashboard = ({ user }) => {
       const localItems = readLocalComplaints();
       setComplaints(localItems);
       setAnalytics(null);
-      setError('Backend dashboard API unavailable. Showing local dashboard data.');
+      setError('Unable to load dashboard data. Showing saved complaint records.');
     } finally {
       setLoading(false);
     }

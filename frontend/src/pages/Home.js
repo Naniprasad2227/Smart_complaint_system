@@ -100,8 +100,8 @@ const Home = () => {
                       <p className="mt-2 text-lg font-bold">React control desk</p>
                     </div>
                     <div className="rounded-2xl bg-white p-4 text-slate-800 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Backend</p>
-                      <p className="mt-2 text-lg font-bold">MERN service core</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Data Mode</p>
+                      <p className="mt-2 text-lg font-bold">Local browser storage</p>
                     </div>
                     <div className="rounded-2xl bg-white p-4 text-slate-800 shadow-sm">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">AI model</p>
