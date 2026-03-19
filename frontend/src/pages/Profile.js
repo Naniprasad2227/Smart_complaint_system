@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateLocalUserProfile } from '../services/localAuth';
+import { updateLocalUserProfile, WORKER_SPECIALTIES } from '../services/localAuth';
 import { getCurrentLocationFields } from '../services/location';
 
 const ProfileRow = ({ label, value }) => (
@@ -21,6 +21,7 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
+    specialty: user?.specialty || WORKER_SPECIALTIES[0],
     country: user?.country || '',
     state: user?.state || '',
     district: user?.district || '',
@@ -50,6 +51,7 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
     setForm({
       name: user?.name || '',
       phone: user?.phone || '',
+      specialty: user?.specialty || WORKER_SPECIALTIES[0],
       country: user?.country || '',
       state: user?.state || '',
       district: user?.district || '',
@@ -136,6 +138,7 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
             <ProfileRow label="Email" value={user?.email} />
             <ProfileRow label="Mobile Number" value={user?.phone} />
             <ProfileRow label="Role" value={user?.role} />
+            {user?.role === 'worker' ? <ProfileRow label="Specialty" value={user?.specialty || 'General Contractor'} /> : null}
             <ProfileRow label="Country" value={user?.country} />
             <ProfileRow label="State" value={user?.state} />
             <ProfileRow label="District" value={user?.district} />
@@ -173,6 +176,20 @@ const Profile = ({ user, onLogout, onUserUpdate }) => {
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 required
               />
+              {user?.role === 'worker' ? (
+                <select
+                  name="specialty"
+                  value={form.specialty}
+                  onChange={handleChange}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                >
+                  {WORKER_SPECIALTIES.map((specialty) => (
+                    <option key={specialty} value={specialty}>
+                      {specialty}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <input
                 type="text"
                 name="country"

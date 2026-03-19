@@ -32,6 +32,12 @@ const getStoredUser = () => {
   }
 };
 
+const getDefaultRouteForRole = (user) => {
+  if (user?.role === 'admin') return '/admin-dashboard';
+  if (user?.role === 'worker') return '/worker-dashboard';
+  return '/dashboard';
+};
+
 const PrivateLayout = ({ user, onLogout, children }) => {
   if (!user) return <Navigate to="/login" replace />;
 
@@ -55,6 +61,7 @@ const App = () => {
   const [user, setUser] = useState(getStoredUser);
 
   const isAuthenticated = Boolean(token && user);
+  const defaultRoute = getDefaultRouteForRole(user);
 
   const authValue = useMemo(() => ({ token, user }), [token, user]);
 
@@ -88,18 +95,24 @@ const App = () => {
     <div>
       <ErrorBoundary>
       <Routes>
-        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Home />} />
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login onAuthSuccess={onAuthSuccess} />} />
-        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register onAuthSuccess={onAuthSuccess} />} />
-        <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Signup onAuthSuccess={onAuthSuccess} />} />
-        <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ResetPassword />} />
+        <Route path="/" element={isAuthenticated ? <Navigate to={defaultRoute} replace /> : <Home />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to={defaultRoute} replace /> : <Login onAuthSuccess={onAuthSuccess} />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to={defaultRoute} replace /> : <Register onAuthSuccess={onAuthSuccess} />} />
+        <Route path="/signup" element={isAuthenticated ? <Navigate to={defaultRoute} replace /> : <Signup onAuthSuccess={onAuthSuccess} />} />
+        <Route path="/reset-password" element={isAuthenticated ? <Navigate to={defaultRoute} replace /> : <ResetPassword />} />
 
         <Route
           path="/dashboard"
           element={
-            <PrivateLayout user={authValue.user} onLogout={onLogout}>
-              <Dashboard user={authValue.user} />
-            </PrivateLayout>
+            authValue.user?.role === 'admin' ? (
+              <Navigate to="/admin-dashboard" replace />
+            ) : authValue.user?.role === 'worker' ? (
+              <Navigate to="/worker-dashboard" replace />
+            ) : (
+              <PrivateLayout user={authValue.user} onLogout={onLogout}>
+                <Dashboard user={authValue.user} />
+              </PrivateLayout>
+            )
           }
         />
         <Route
@@ -249,7 +262,7 @@ const App = () => {
           }
         />
 
-        <Route path="*" element={<Navigate to={isAuthenticated ? '/dashboard' : '/'} replace />} />
+        <Route path="*" element={<Navigate to={isAuthenticated ? defaultRoute : '/'} replace />} />
       </Routes>
       </ErrorBoundary>
     </div>

@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginWithEmailPassword } from '../services/localAuth';
 
+const getLandingRouteForRole = (role) => {
+  if (role === 'admin') return '/admin-dashboard';
+  if (role === 'worker') return '/worker-dashboard';
+  return '/dashboard';
+};
+
 const Login = ({ onAuthSuccess }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -20,7 +26,7 @@ const Login = ({ onAuthSuccess }) => {
     try {
       const payload = loginWithEmailPassword(form);
       onAuthSuccess(payload);
-      navigate('/dashboard');
+      navigate(getLandingRouteForRole(payload?.user?.role));
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {

@@ -1,4 +1,5 @@
 import {
+  WORKER_SPECIALTIES,
   canAdminAccessByScope,
   loginWithEmailPassword,
   normalizeAdminLevel,
@@ -12,18 +13,7 @@ import { createLocalComplaint, prependLocalComplaint, readLocalComplaints, write
 const WORKERS_STORAGE_KEY = 'localWorkers';
 const NOTIFICATIONS_STORAGE_KEY = 'localNotifications';
 
-const defaultSpecialties = [
-  'Civil Engineer',
-  'Electrician',
-  'Plumber',
-  'Road Contractor',
-  'Environmental Inspector',
-  'Sanitation Worker',
-  'Building Inspector',
-  'Water Engineer',
-  'IT Technician',
-  'General Contractor',
-];
+const defaultSpecialties = WORKER_SPECIALTIES;
 
 const safeResolve = (data) => Promise.resolve({ data });
 
@@ -207,6 +197,43 @@ const seedWorkers = () => {
 const readWorkers = () => seedWorkers();
 const writeWorkers = (workers) => writeJson(WORKERS_STORAGE_KEY, workers);
 
+const getRegisteredWorkers = ({ currentUser = getCurrentUser(), includeInactive = false } = {}) => {
+  const candidates = readLocalUsers().filter((user) => user.role === 'worker');
+
+  return candidates
+    .filter((user) => {
+      if (!includeInactive && user.accountStatus === 'inactive') return false;
+      if (currentUser?.role === 'admin') {
+        return canAdminAccessByScope(currentUser, user);
+      }
+      return true;
+    })
+    .map((user) => ({
+      _id: user.id,
+      name: user.name || '',
+      phone: user.phone || '',
+      specialty: user.specialty || 'General Contractor',
+      isAvailable: user.accountStatus !== 'inactive',
+      isActive: user.accountStatus !== 'inactive',
+      type: 'registered',
+    }));
+};
+
+const getWorkerPool = ({ currentUser = getCurrentUser(), includeInactive = false } = {}) => {
+  const managed = readWorkers().filter((worker) => (includeInactive ? true : worker.isActive));
+  const registered = getRegisteredWorkers({ currentUser, includeInactive });
+  const merged = [...managed, ...registered];
+
+  const deduped = new Map();
+  merged.forEach((worker) => {
+    if (!deduped.has(worker._id)) {
+      deduped.set(worker._id, worker);
+    }
+  });
+
+  return [...deduped.values()];
+};
+
 const readNotifications = () => readJson(NOTIFICATIONS_STORAGE_KEY, []);
 const writeNotifications = (items) => writeJson(NOTIFICATIONS_STORAGE_KEY, items);
 
@@ -345,7 +372,7 @@ const buildEnhancedAnalytics = (complaints) => {
     };
   });
 
-  const workerPerformance = readWorkers().map((worker) => {
+  const workerPerformance = getWorkerPool({ currentUser: getCurrentUser(), includeInactive: true }).map((worker) => {
     const assigned = complaints.filter((item) => item.assignedWorker?.workerId === worker._id);
     const resolvedCount = assigned.filter((item) => item.status === 'Resolved').length;
     const inProgress = assigned.filter((item) => item.status === 'In Progress').length;
@@ -526,17 +553,27 @@ export const complaintApi = {
       return Promise.reject(new Error('This complaint is assigned to a different admin'));
     }
 
-    const worker = readWorkers().find((item) => item._id === workerId) || null;
+    const availableWorkers = getWorkerPool({ currentUser, includeInactive: true });
+    const worker = availableWorkers.find((item) => item._id === workerId) || null;
+    if (workerId && !worker) {
+      return Promise.reject(new Error('Worker not found in your governance scope'));
+    }
+    if (worker && !worker.isActive) {
+      return Promise.reject(new Error('Cannot assign an inactive worker'));
+    }
+
     const complaint = updateComplaintRecord(complaintId, (item) => ({
       ...item,
       assignedWorker: worker
-        ? { workerId: worker._id, name: worker.name, specialty: worker.specialty }
+        ? { workerId: worker._id, name: worker.name, specialty: worker.specialty, workerType: worker.type }
         : null,
       status: worker ? 'In Progress' : item.status,
     }));
-    if (worker) {
+    if (worker && worker.type === 'managed') {
       const workers = readWorkers().map((item) => (item._id === worker._id ? { ...item, isAvailable: false } : item));
       writeWorkers(workers);
+    }
+    if (worker) {
       addNotification('Worker assigned', `${worker.name} was assigned to ${complaint?.complaintTitle || 'a complaint'}.`);
     }
     return safeResolve({ complaint });
@@ -552,7 +589,11 @@ export const complaintApi = {
   },
   updateProgress: (id, status, progressNote) => {
     const complaint = updateComplaintRecord(id, (item) => ({ ...item, status, progressNote }));
-    if (status === 'Resolved' && complaint?.assignedWorker?.workerId) {
+    if (
+      status === 'Resolved' &&
+      complaint?.assignedWorker?.workerId &&
+      complaint?.assignedWorker?.workerType === 'managed'
+    ) {
       const workers = readWorkers().map((item) =>
         item._id === complaint.assignedWorker.workerId ? { ...item, isAvailable: true } : item
       );
@@ -604,7 +645,11 @@ export const workerPortalApi = {
 };
 
 export const workerApi = {
-  getAll: () => safeResolve(readWorkers()),
+  getAll: (options = {}) => {
+    const currentUser = getCurrentUser();
+    const includeInactive = String(options?.includeInactive || '').toLowerCase() === 'true' || options?.includeInactive === true;
+    return safeResolve(getWorkerPool({ currentUser, includeInactive }));
+  },
   getSpecialties: () => safeResolve(defaultSpecialties),
   create: (payload) => {
     const worker = {

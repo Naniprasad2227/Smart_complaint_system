@@ -2,6 +2,19 @@ const USERS_STORAGE_KEY = 'simpleAuthUsers';
 
 export const ADMIN_LEVELS = ['village', 'mandal', 'district', 'state', 'nation'];
 
+export const WORKER_SPECIALTIES = [
+  'Civil Engineer',
+  'Electrician',
+  'Plumber',
+  'Road Contractor',
+  'Environmental Inspector',
+  'Sanitation Worker',
+  'Building Inspector',
+  'Water Engineer',
+  'IT Technician',
+  'General Contractor',
+];
+
 export const ADMIN_LEVEL_TITLES = {
   village: 'Village Local Leader',
   mandal: 'Mandal Regional Coordinator',
@@ -143,6 +156,10 @@ const buildUserRecord = (values = {}, existingUser) => {
   const role = VALID_ROLES.includes(normalizeLocation(values.role)) ? normalizeLocation(values.role) : 'user';
   const location = buildLocationPayload(values);
   const adminLevel = role === 'admin' ? normalizeAdminLevel(values.adminLevel) : '';
+  const specialty =
+    role === 'worker'
+      ? normalizeText(values.specialty || existingUser?.specialty || WORKER_SPECIALTIES[0])
+      : '';
   const phone = normalizePhone(values.phone);
   const email = normalizeEmail(values.email || existingUser?.email);
   const password = Object.prototype.hasOwnProperty.call(values, 'password') ? values.password : existingUser?.password;
@@ -176,6 +193,7 @@ const buildUserRecord = (values = {}, existingUser) => {
     role,
     adminLevel,
     adminTitle: role === 'admin' ? ADMIN_LEVEL_TITLES[adminLevel] : '',
+    specialty,
     accountStatus: existingUser?.accountStatus || 'active',
     mobileVerified: true,
     createdAt: existingUser?.createdAt || new Date().toISOString(),

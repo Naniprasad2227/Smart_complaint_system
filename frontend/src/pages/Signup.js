@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ADMIN_LEVELS, signupWithEmailPassword } from '../services/localAuth';
+import { ADMIN_LEVELS, WORKER_SPECIALTIES, signupWithEmailPassword } from '../services/localAuth';
 import { getCurrentLocationFields } from '../services/location';
 
 const roleOptions = [
@@ -8,6 +8,12 @@ const roleOptions = [
   { value: 'admin', label: 'Admin' },
   { value: 'worker', label: 'Worker' },
 ];
+
+const getLandingRouteForRole = (role) => {
+  if (role === 'admin') return '/admin-dashboard';
+  if (role === 'worker') return '/worker-dashboard';
+  return '/dashboard';
+};
 
 const Signup = ({ onAuthSuccess }) => {
   const navigate = useNavigate();
@@ -18,6 +24,7 @@ const Signup = ({ onAuthSuccess }) => {
     password: '',
     role: 'user',
     adminLevel: 'village',
+    specialty: WORKER_SPECIALTIES[0],
     country: '',
     state: '',
     district: '',
@@ -65,7 +72,7 @@ const Signup = ({ onAuthSuccess }) => {
     try {
       const payload = signupWithEmailPassword(form);
       onAuthSuccess(payload);
-      navigate('/dashboard');
+      navigate(getLandingRouteForRole(payload?.user?.role));
     } catch (err) {
       setError(err.message || 'Signup failed');
     } finally {
@@ -141,6 +148,19 @@ const Signup = ({ onAuthSuccess }) => {
               {ADMIN_LEVELS.map((level) => (
                 <option key={level} value={level}>
                   {level.charAt(0).toUpperCase() + level.slice(1)} Admin
+                </option>
+              ))}
+            </select>
+          ) : form.role === 'worker' ? (
+            <select
+              name="specialty"
+              value={form.specialty}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-slate-300 bg-white/80 px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+            >
+              {WORKER_SPECIALTIES.map((specialty) => (
+                <option key={specialty} value={specialty}>
+                  {specialty}
                 </option>
               ))}
             </select>

@@ -19,6 +19,7 @@ const navItems = [
 
 const Sidebar = ({ role }) => {
   const isAdmin = role === 'admin';
+  const dashboardRoute = role === 'admin' ? '/admin-dashboard' : role === 'worker' ? '/worker-dashboard' : '/dashboard';
 
   return (
     <aside className="relative w-full overflow-hidden md:w-[248px] blue-panel p-4 md:min-h-[calc(100vh-132px)]">
@@ -40,10 +41,12 @@ const Sidebar = ({ role }) => {
       </div>
 
       <nav className="space-y-2">
-        {navItems.filter((item) => !item.roles || item.roles.includes(role)).map((item) => (
+        {navItems.filter((item) => !item.roles || item.roles.includes(role)).map((item) => {
+          const targetRoute = item.to === '/dashboard' ? dashboardRoute : item.to;
+          return (
           <NavLink
-            key={item.to}
-            to={item.to}
+            key={`${item.to}-${targetRoute}`}
+            to={targetRoute}
             className={({ isActive }) =>
               `${baseClass} ${
                 isActive
@@ -55,7 +58,8 @@ const Sidebar = ({ role }) => {
             <span className="grid h-6 w-6 place-items-center rounded-md bg-black/10 text-[10px]">{item.icon}</span>
             <span className="text-[12px] leading-4">{item.label}</span>
           </NavLink>
-        ))}
+          );
+        })}
 
         <NavLink
           to="/profile"
